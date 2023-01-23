@@ -1,0 +1,14 @@
+{
+  "name": "proxy",
+  "private": true,
+  "scripts": {
+    "start": "node proxy.js"
+  },
+  "dependencies": {
+    "uuid": "^8.3.2",
+    "ws": "^8.4.0"
+  },
+  "devDependencies": {
+    "prettier": "^2.8.2"
+  }
+}
