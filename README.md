@@ -22,3 +22,8 @@ npm run start
  - PROXY_HOST - Хост прокси, по умолчанию localhost.
  - SOCKET_TIMEOUT - Таймаут установки соединения с TCP-сервером, в миллисекундах, по умолчанию 1000 мс.
 
+# Сборка в docker-образ
+
+```
+docker build --tag pproto-web-proxy .
+```
