@@ -1,14 +1,18 @@
+const log = require('loglevel');
 const net = require("net");
 const WebSocket = require("ws");
 const { v4: uuid } = require("uuid");
 const { envRoutingFunction } = require("./routing");
 
+const LOG_LEVEL = process.env['LOG_LEVEL'] || 'info';
 const PROXY_PORT = process.env["PROXY_PORT"] || 9000;
 const PROXY_HOST = process.env["PROXY_HOST"] || "localhost";
 const SOCKET_TIMEOUT = process.env["SOCKET_TIMEOUT"] || 1000;
 
-console.log(`PROXY PORT: ${PROXY_PORT}`);
-console.log(`PROXY HOST: ${PROXY_HOST}`);
+log.setLevel(LOG_LEVEL);
+
+log.info(`PROXY PORT: ${PROXY_PORT}`);
+log.info(`PROXY HOST: ${PROXY_HOST}`);
 
 const PROTOCOL_SIGNATURE = [
   0xfe, 0xa6, 0xb9, 0x58, 0xda, 0xfb, 0x4f, 0x5c, 0xb6, 0x20, 0xfe, 0x0a, 0xaf,
@@ -23,13 +27,13 @@ function main(routingFunction) {
 
   wsServer.on("connection", async (wsClient, req) => {
     const connectionId = randomId();
-    console.log(`[${connectionId}] Client connected`);
+    log.info(`[${connectionId}] Client connected`);
     try {
       wsClient.pause();
       const { host, port } = await routingFunction(req);
       startTcpConnection(connectionId, wsClient, host, port);
     } catch (e) {
-      console.error(`[${connectionId}] Failed to start tcp connection`, e);
+      log.error(`[${connectionId}] Failed to start tcp connection`, e);
       wsClient.close();
     }
   });
@@ -48,13 +52,13 @@ function startTcpConnection(connectionId, wsClient, host, port) {
       timeout: SOCKET_TIMEOUT,
     },
     async () => {
-      console.log(`[${connectionId}] Server connected`);
+      log.info(`[${connectionId}] Server connected`);
 
       try {
         await validateSignature(connectionId, tcpSocket);
         await checkCompatibility(connectionId, tcpSocket);
       } catch (e) {
-        console.error(
+        log.error(
           `[${connectionId}] Connection error, disconnecting. ${e}`
         );
         disconnect();
@@ -64,13 +68,13 @@ function startTcpConnection(connectionId, wsClient, host, port) {
       wsClient.on("message", (messageBuffer) => {
         try {
           const message = decoder.decode(messageBuffer);
-          console.log(
+          log.debug(
             `[${connectionId}] Message from client`,
             trimMessage(message)
           );
           sendMessage(tcpSocket, message);
         } catch (e) {
-          console.error(
+          log.error(
             `[${connectionId}] Failed to process client message, disconnecting. ${e}`
           );
           disconnect();
@@ -81,13 +85,13 @@ function startTcpConnection(connectionId, wsClient, host, port) {
       while (tcpSocket.readable) {
         try {
           const message = await receiveMessage(tcpSocket);
-          console.log(
+          log.debug(
             `[${connectionId}] Message from server`,
             trimMessage(message)
           );
           wsClient.send(message);
         } catch (e) {
-          console.error(
+          log.error(
             `[${connectionId}] Failed to process server message, disconnecting. ${e}`
           );
           disconnect();
@@ -97,17 +101,17 @@ function startTcpConnection(connectionId, wsClient, host, port) {
   );
 
   wsClient.on("close", () => {
-    console.log(`[${connectionId}] Client disconnected`);
+    log.info(`[${connectionId}] Client disconnected`);
     disconnect();
   });
 
   tcpSocket.on("close", () => {
-    console.log(`[${connectionId}] Server disconnected`);
+    log.info(`[${connectionId}] Server disconnected`);
     disconnect();
   });
 
   tcpSocket.on("error", (e) => {
-    console.error(`[${connectionId}] Server error, disconnecting. ${e}`);
+    log.error(`[${connectionId}] Server error, disconnecting. ${e}`);
     disconnect();
   });
 }
@@ -127,7 +131,7 @@ async function validateSignature(connectionId, tcpSocket) {
     throw new Error("Signature mismatch");
   }
 
-  console.log(`[${connectionId}] Signature is valid`);
+  log.info(`[${connectionId}] Signature is valid`);
 }
 
 async function checkCompatibility(connectionId, tcpSocket) {
@@ -153,7 +157,7 @@ async function checkCompatibility(connectionId, tcpSocket) {
     );
   }
 
-  console.log(`[${connectionId}] Protocol is compatible`);
+  log.info(`[${connectionId}] Protocol is compatible`);
 }
 
 async function receiveMessage(socket) {
